@@ -1,4 +1,5 @@
 import { defineConfig } from 'tsup';
+import { copyFileSync } from 'node:fs';
 
 export default defineConfig({
   entry: {
@@ -10,4 +11,7 @@ export default defineConfig({
   splitting: true,
   clean: true,
   external: ['node:crypto'],
+  onSuccess: async () => {
+    copyFileSync('src/styles/podcast-player.css', 'dist/podcast-player.css');
+  },
 });

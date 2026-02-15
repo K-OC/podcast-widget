@@ -27,7 +27,7 @@
     "./dist/podcast-player.css"
   ],
   "scripts": {
-    "build": "tsup && cp src/styles/podcast-player.css dist/",
+    "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
     "test": "vitest run",
