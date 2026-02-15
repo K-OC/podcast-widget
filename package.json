@@ -1,0 +1,48 @@
+{
+  "name": "podcast-widget",
+  "version": "0.1.0",
+  "description": "Framework-agnostic podcast player widget with configurable player modes, theming via CSS custom properties, and optional PodcastIndex API client.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./podcast-index": {
+      "types": "./dist/podcast-index.d.ts",
+      "import": "./dist/podcast-index.mjs",
+      "require": "./dist/podcast-index.cjs"
+    },
+    "./styles": "./dist/podcast-player.css"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": [
+    "./dist/podcast-player.css"
+  ],
+  "scripts": {
+    "build": "tsup && cp src/styles/podcast-player.css dist/",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "podcast",
+    "player",
+    "widget",
+    "audio",
+    "typescript"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}
