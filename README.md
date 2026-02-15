@@ -1,3 +1,4 @@
+```
 podcast-widget/
 ├── src/
 │   ├── core/
@@ -24,3 +25,4 @@ podcast-widget/
 ├── tsconfig.json                 # Client-side TS config
 ├── tsconfig.server.json          # Server-side (podcast-index) config
 └── tsup.config.ts                # Build config
+```
