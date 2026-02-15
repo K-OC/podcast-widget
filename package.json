@@ -4,17 +4,17 @@
   "description": "Framework-agnostic podcast player widget with configurable player modes, theming via CSS custom properties, and optional PodcastIndex API client.",
   "type": "module",
   "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
+      "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
     "./podcast-index": {
       "types": "./dist/podcast-index.d.ts",
-      "import": "./dist/podcast-index.mjs",
+      "import": "./dist/podcast-index.js",
       "require": "./dist/podcast-index.cjs"
     },
     "./styles": "./dist/podcast-player.css"
@@ -30,7 +30,10 @@
     "build": "tsup && cp src/styles/podcast-player.css dist/",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
-    "prepublishOnly": "npm run build"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
     "podcast",
@@ -42,7 +45,10 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^25.2.3",
+    "@vitest/coverage-v8": "^4.0.18",
+    "jsdom": "^28.0.0",
     "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.18"
   }
 }

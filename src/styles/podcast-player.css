@@ -87,7 +87,7 @@
 
 .pw-mini-progress {
   position: absolute;
-  top: 4.5px;
+  top: 0;
   left: 0;
   right: 0;
   height: 3px;
@@ -251,10 +251,11 @@
   flex-direction: column;
 }
 
-/* Hero section */
+/* Hero section — flex-shrink: 0 ensures controls aren't compressed by playlist */
 .pw-hero {
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .pw-hero::after {
@@ -510,6 +511,7 @@
   background: var(--player-surface);
   border-top: 1px solid var(--player-outline-variant);
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
