@@ -12,6 +12,7 @@ export const ICONS = {
   volume: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>',
   info: '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>',
   playlist: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>',
 };
 
 /** Speed options for the speed select dropdown. */
@@ -54,6 +55,7 @@ export function renderPlaylistItem(
       </div>
       <div class="pw-episode-actions">
         <div class="pw-episode-duration">${escapeHtml(duration)}</div>
+        <a href="${escapeHtml(episode.audioUrl)}" download="${escapeHtml(episode.title)}" target="_blank" class="pw-download-btn" title="Download episode" data-download>${ICONS.download}</a>
         ${feedLinkHtml}
       </div>
     </div>

@@ -37,7 +37,7 @@ const mini = new MiniPlayer({
 const full = new FullPlayer({
   container: document.getElementById('full-player')!,
   controller,
-  controls: { playPause: true, skipForward: true, skipBackward: true, volume: true, speed: true, progress: true, playlist: true },
+  controls: { playPause: true, skipForward: true, skipBackward: true, volume: true, speed: true, progress: true, playlist: true, download: true },
 });
 
 // 3. Wire them together
@@ -97,6 +97,7 @@ interface ControlsConfig {
   progress?: boolean;
   playlist?: boolean;   // Inline dropdown playlist (mini) or full playlist (full)
   expand?: boolean;     // Button to emit 'expand' event
+  download?: boolean;   // Download button for current episode
 }
 ```
 
@@ -123,7 +124,7 @@ mini.destroy(); // Cleanup when done
 
 ### FullPlayer
 
-Modal overlay with hero section (blurred artwork background), controls, and scrollable playlist. Defaults: all controls enabled.
+Modal overlay with hero section (blurred artwork background), controls, and scrollable playlist. Defaults: all controls enabled. Each playlist item includes a download button.
 
 ```typescript
 const full = new FullPlayer({

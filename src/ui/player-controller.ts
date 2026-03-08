@@ -18,6 +18,7 @@ export interface ControlsConfig {
   progress?: boolean;
   playlist?: boolean;
   expand?: boolean;
+  download?: boolean;
 }
 
 /**

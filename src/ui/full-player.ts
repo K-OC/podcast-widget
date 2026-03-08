@@ -50,6 +50,7 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
       speed: true,
       progress: true,
       playlist: true,
+      download: true,
       ...opts.controls,
     };
     this.feedPageUrl = opts.feedPageUrl;
@@ -115,6 +116,9 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
         (s) => `<option value="${s}"${s === currentSpeed ? ' selected' : ''}>${s}×</option>`,
       ).join('');
       secondaryHtml += `<select class="pw-speed-select" aria-label="Playback speed">${options}</select>`;
+    }
+    if (c.download) {
+      secondaryHtml += `<button class="pw-btn pw-btn--download" aria-label="Download episode">${ICONS.download}</button>`;
     }
 
     const progressHtml = c.progress
@@ -190,6 +194,9 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
 
     // Speed
     this.addChange('.pw-speed-select', (val) => this.controller.setSpeed(parseFloat(val)));
+
+    // Download
+    this.addClick('.pw-btn--download', () => this.downloadCurrentEpisode());
 
     // Progress bar seek
     if (this.progressContainer) {
@@ -314,7 +321,7 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
     if (!this.playlistEl) return;
     this.playlistEl.querySelectorAll('.pw-playlist-item').forEach((item) => {
       item.addEventListener('click', (e) => {
-        if ((e.target as HTMLElement).closest('[data-feed-link]')) return;
+        if ((e.target as HTMLElement).closest('[data-feed-link]') || (e.target as HTMLElement).closest('[data-download]')) return;
         const index = parseInt((item as HTMLElement).dataset.index || '0');
         this.controller.playEpisode(index);
       });
@@ -326,6 +333,21 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
     this.playlistEl.querySelectorAll('.pw-playlist-item').forEach((item, i) => {
       item.classList.toggle('pw-playing', i === index);
     });
+  }
+
+  // ─── Download ────────────────────────────────────────────────
+
+  private downloadCurrentEpisode(): void {
+    const episode = this.controller.getCurrentEpisode();
+    if (!episode) return;
+
+    const a = document.createElement('a');
+    a.href = episode.audioUrl;
+    a.target = '_blank';
+    a.download = episode.title || 'episode';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   // ─── Helpers ───────────────────────────────────────────────────
