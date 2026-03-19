@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Podcast Widget Demo</title>
+  <link rel="stylesheet" href="/dist/podcast-player.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    h1 { margin-bottom: 1rem; font-size: 1.4rem; opacity: 0.7; }
+
+    .player-wrapper {
+      --player-surface: #16213e;
+      --player-surface-variant: #0f3460;
+      --player-on-surface: #e0e0e0;
+      --player-on-surface-variant: #a0a0a0;
+      --player-on-surface-rgb: 224, 224, 224;
+      --player-outline: #334155;
+      --player-outline-variant: #1e293b;
+      --md-primary: #e94560;
+      --md-on-primary: #ffffff;
+      --md-secondary: #0f3460;
+      --md-on-secondary: #e0e0e0;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    #full-player {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+    }
+
+    #backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 99;
+    }
+  </style>
+</head>
+<body>
+  <h1>Podcast Widget Demo</h1>
+
+  <div class="player-wrapper">
+    <div id="mini-player"></div>
+  </div>
+
+  <div id="backdrop"></div>
+  <div id="full-player" class="pw-full player-wrapper"></div>
+
+  <script type="module">
+    import {
+      AudioEngine,
+      PlayerController,
+      FetchEpisodeProvider,
+      MiniPlayer,
+      FullPlayer,
+    } from '/dist/index.js';
+
+    const engine = new AudioEngine();
+    const provider = new FetchEpisodeProvider('/api/episodes', {
+      storagePrefix: 'demo',
+    });
+    const controller = new PlayerController(engine, provider);
+
+    const mini = new MiniPlayer({
+      container: document.getElementById('mini-player'),
+      controller,
+      controls: {
+        playPause: true,
+        progress: true,
+        volume: true,
+        playlist: true,
+        expand: true,
+      },
+    });
+
+    const full = new FullPlayer({
+      container: document.getElementById('full-player'),
+      backdrop: document.getElementById('backdrop'),
+      controller,
+    });
+
+    mini.on('expand', () => full.show());
+    full.on('close', () => full.hide());
+
+    controller.loadEpisodes();
+  </script>
+</body>
+</html>
