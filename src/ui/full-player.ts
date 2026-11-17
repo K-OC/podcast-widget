@@ -307,6 +307,8 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
     if (!this.heroBg) return;
     this.heroBg.style.backgroundImage = url ? `url("${url.replace(/"/g, '%22')}")` : '';
     this.heroBg.classList.toggle('pw-active', !!url);
+    // Dark header with the theme's light colour (see .pw-hero.pw-has-art)
+    this.heroBg.parentElement?.classList.toggle('pw-has-art', !!url);
   }
 
   private updatePlayPauseState(playing: boolean): void {

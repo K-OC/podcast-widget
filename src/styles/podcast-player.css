@@ -14,6 +14,9 @@
  *   --md-on-primary             Text on accent color
  *   --md-secondary              Secondary accent (saved position indicator)
  *   --md-on-secondary           Text on secondary accent
+ *   --player-on-art             Light text/icon colour for the full player's header
+ *                               over darkened artwork (default #fff). Needs relative
+ *                               luminance >= 0.774 to keep 4.5:1 over any artwork.
  */
 
 /* ================================================================
@@ -365,14 +368,30 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.6);
   z-index: 1;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
-.pw-hero:has(.pw-hero-bg.pw-active)::after {
+/* Over artwork, the hero darkens it (60% black) and draws its text and icons in
+   the theme's --player-on-art light colour, so it reads over any image: white
+   artwork ends up rgb(102,102,102), and a colour with luminance >= 0.774 keeps
+   4.5:1 against that. The playlist below keeps the theme's own colours. */
+.pw-hero.pw-has-art {
+  --pw-on-art: var(--player-on-art, #ffffff);
+  --player-on-surface: var(--pw-on-art);
+  --player-on-surface-variant: var(--pw-on-art);
+  --player-on-surface-rgb: 255, 255, 255;
+  --player-outline: color-mix(in srgb, var(--pw-on-art) 50%, transparent);
+  --player-outline-variant: color-mix(in srgb, var(--pw-on-art) 30%, transparent);
+  --md-primary: var(--pw-on-art);
+  --md-on-primary: #1c1b1f;
+  --player-surface: #1c1b1f;
+}
+
+.pw-hero.pw-has-art::after {
   opacity: 1;
 }
 

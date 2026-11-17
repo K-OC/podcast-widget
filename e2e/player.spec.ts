@@ -141,6 +141,32 @@ test.describe('progress display', () => {
   });
 });
 
+// ─── Header over artwork ───────────────────────────────────────────
+
+test.describe('header over artwork', () => {
+  test("uses the theme's --player-on-art colour only while artwork shows", async ({ page }) => {
+    list = [episode('a'), episode('b', { image: BROKEN_IMAGE })];
+    await open(page);
+    const hero = page.locator('#full .pw-hero');
+    const title = page.locator('#full .pw-track-name');
+    const colour = () => title.evaluate((e) => getComputedStyle(e).color);
+    await expect(hero).toHaveClass(/pw-has-art/);
+    expect(await colour()).toBe('rgb(253, 246, 227)'); // fixture --player-on-art
+
+    await page.evaluate(() => (window as any).player.controller.loadEpisode(1));
+    await expect(hero).not.toHaveClass(/pw-has-art/);
+    expect(await colour()).toBe('rgb(29, 27, 32)'); // fixture --player-on-surface
+  });
+
+  test('falls back to white without the token', async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => document.documentElement.style.removeProperty('--player-on-art'));
+    await page.addStyleTag({ content: ':root { --player-on-art: initial; }' });
+    await expect(page.locator('#full .pw-hero')).toHaveClass(/pw-has-art/);
+    expect(await page.locator('#full .pw-track-name').evaluate((e) => getComputedStyle(e).color)).toBe('rgb(255, 255, 255)');
+  });
+});
+
 // ─── Skip buttons ──────────────────────────────────────────────────
 
 test.describe('skip buttons', () => {
@@ -332,6 +358,14 @@ test.describe('visual', () => {
   test('mini player', async ({ page }) => {
     await open(page);
     await expect(page.locator('#mini')).toHaveScreenshot('mini.png');
+  });
+
+  test('full player with artwork', async ({ page }) => {
+    await open(page);
+    await openFull(page);
+    await expect(page.locator('#full .pw-hero.pw-has-art')).toBeVisible();
+    await page.waitForTimeout(500); // hero fade-in
+    await expect(page.locator('#full .pw-hero')).toHaveScreenshot('full-hero-art.png');
   });
 
   test('full player', async ({ page }) => {

@@ -273,8 +273,14 @@ Define these CSS custom properties on a parent element to theme the player:
   --md-on-primary: #fdf6e3;            /* Text on accent */
   --md-secondary: #2aa198;             /* Secondary accent (saved position) */
   --md-on-secondary: #fdf6e3;          /* Text on secondary accent */
+  --player-on-art: #fdf6e3;            /* Light colour for the header over artwork */
 }
 ```
+
+When episode artwork loads, the full player's header shows it blurred behind a 60%
+black overlay and draws its text and controls in `--player-on-art` (default white),
+whatever the theme. Pick a light colour from your palette with relative luminance of
+at least 0.774 — that keeps 4.5:1 contrast over any artwork, including pure white.
 
 All CSS classes use the `pw-` prefix to avoid collisions.
 
