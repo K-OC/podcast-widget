@@ -27,6 +27,29 @@ describe('AudioEngine', () => {
     expect(engine.duration).toBe(0);
   });
 
+  it('reports progress when a new source starts loading (resets to zero)', () => {
+    const onUpdate = vi.fn();
+    engine.on('time-update', onUpdate);
+    (engine as any).audio.dispatchEvent(new Event('loadstart'));
+    expect(onUpdate).toHaveBeenCalledWith(expect.objectContaining({ currentTime: 0, percentage: 0 }));
+  });
+
+  it('reports progress once metadata loads, before playback', () => {
+    const onUpdate = vi.fn();
+    engine.on('time-update', onUpdate);
+    (engine as any).audio.dispatchEvent(new Event('loadedmetadata'));
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops reporting after destroy', () => {
+    const onUpdate = vi.fn();
+    engine.on('time-update', onUpdate);
+    const audio = (engine as any).audio;
+    engine.destroy();
+    audio.dispatchEvent(new Event('loadstart'));
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+
   it('starts with currentTime = 0', () => {
     expect(engine.currentTime).toBe(0);
   });

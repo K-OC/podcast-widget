@@ -107,6 +107,40 @@ test.describe('restore', () => {
   });
 });
 
+// ─── Progress display ──────────────────────────────────────────────
+
+test.describe('progress display', () => {
+  const barWidth = (page: Page, sel: string) =>
+    page.locator(sel).evaluate((e) => e.getBoundingClientRect().width / e.parentElement!.getBoundingClientRect().width);
+
+  test('is empty before anything plays, not full', async ({ page }) => {
+    await open(page);
+    await waitForAudio(page);
+    expect(await barWidth(page, '#mini .pw-mini-progress-bar')).toBe(0);
+    await openFull(page);
+    expect(await barWidth(page, '#full .pw-progress-bar')).toBe(0);
+    await expect(page.locator('#full .pw-track-time')).toHaveText('00:00 / 02:00');
+  });
+
+  test('shows a restored position before playback', async ({ page }) => {
+    await open(page);
+    await leaveAt(page, 60);
+    await page.reload();
+    await page.evaluate(() => (window as any).playerReady);
+    await expect(page.locator('#full .pw-track-time')).toHaveText('01:00 / 02:00');
+    await expect.poll(() => barWidth(page, '#mini .pw-mini-progress-bar')).toBeCloseTo(0.5, 2);
+  });
+
+  test('resets when switching episodes', async ({ page }) => {
+    await open(page);
+    await leaveAt(page, 60);
+    await expect.poll(() => barWidth(page, '#mini .pw-mini-progress-bar')).toBeCloseTo(0.5, 2);
+    await page.evaluate(() => (window as any).player.controller.loadEpisode(1));
+    await expect.poll(() => barWidth(page, '#mini .pw-mini-progress-bar')).toBe(0);
+    await expect(page.locator('#full .pw-track-time')).toHaveText('00:00 / 02:00');
+  });
+});
+
 // ─── Skip buttons ──────────────────────────────────────────────────
 
 test.describe('skip buttons', () => {

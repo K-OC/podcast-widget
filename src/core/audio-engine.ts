@@ -42,6 +42,8 @@ export class AudioEngine extends EventEmitter<AudioEventMap> {
       // Re-apply playback rate after new source loads
       this.audio.playbackRate = this._playbackRate;
       this.emit('loaded-metadata', { duration: this.audio.duration });
+      // Show the (possibly restored) position and duration before playback starts
+      this.onTimeUpdate();
     };
 
     this.onError = () => {
@@ -53,6 +55,8 @@ export class AudioEngine extends EventEmitter<AudioEventMap> {
     };
 
     this.audio.addEventListener('timeupdate', this.onTimeUpdate);
+    // A new source resets progress to zero rather than showing the previous episode's
+    this.audio.addEventListener('loadstart', this.onTimeUpdate);
     this.audio.addEventListener('ended', this.onEnded);
     this.audio.addEventListener('loadedmetadata', this.onLoadedMetadata);
     this.audio.addEventListener('error', this.onError);
@@ -159,6 +163,7 @@ export class AudioEngine extends EventEmitter<AudioEventMap> {
 
   destroy(): void {
     this.audio.removeEventListener('timeupdate', this.onTimeUpdate);
+    this.audio.removeEventListener('loadstart', this.onTimeUpdate);
     this.audio.removeEventListener('ended', this.onEnded);
     this.audio.removeEventListener('loadedmetadata', this.onLoadedMetadata);
     this.audio.removeEventListener('error', this.onError);
