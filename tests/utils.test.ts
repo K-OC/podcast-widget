@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTime, formatDuration, formatDate, escapeHtml, getEpisodeImage } from '../src/ui/utils.js';
+import { formatTime, formatDuration, formatDate, escapeHtml, getEpisodeImage, setArtwork, hideBrokenImages, attachSeekTooltip } from '../src/ui/utils.js';
 
 describe('formatTime', () => {
   it('formats seconds as MM:SS', () => {
@@ -87,5 +87,110 @@ describe('getEpisodeImage', () => {
 
   it('returns empty string when no images', () => {
     expect(getEpisodeImage({})).toBe('');
+  });
+});
+
+describe('setArtwork', () => {
+  it('shows the image when given a URL', () => {
+    const img = document.createElement('img');
+    img.hidden = true;
+    setArtwork(img, 'https://example.com/a.jpg');
+    expect(img.hidden).toBe(false);
+    expect(img.getAttribute('src')).toBe('https://example.com/a.jpg');
+  });
+
+  it('hides the image and clears src without a URL', () => {
+    const img = document.createElement('img');
+    img.src = 'https://example.com/a.jpg';
+    setArtwork(img, '');
+    expect(img.hidden).toBe(true);
+    expect(img.hasAttribute('src')).toBe(false);
+  });
+
+  it('ignores a missing element', () => {
+    expect(() => setArtwork(null, 'x')).not.toThrow();
+  });
+});
+
+describe('hideBrokenImages', () => {
+  function setup() {
+    const root = document.createElement('div');
+    root.innerHTML = '<span class="pw-art"><img src="a.jpg"></span><img class="other" src="b.jpg">';
+    const cleanup = hideBrokenImages(root);
+    const [art, other] = root.querySelectorAll('img');
+    return { cleanup, art, other };
+  }
+
+  it('hides artwork images that fail to load', () => {
+    const { art } = setup();
+    art.dispatchEvent(new Event('error'));
+    expect(art.hidden).toBe(true);
+  });
+
+  it('leaves images outside an artwork slot alone', () => {
+    const { other } = setup();
+    other.dispatchEvent(new Event('error'));
+    expect(other.hidden).toBe(false);
+  });
+
+  it('stops after cleanup', () => {
+    const { cleanup, art } = setup();
+    cleanup();
+    art.dispatchEvent(new Event('error'));
+    expect(art.hidden).toBe(false);
+  });
+});
+
+describe('attachSeekTooltip', () => {
+  function setup(duration: number) {
+    const bar = document.createElement('div');
+    document.body.appendChild(bar);
+    bar.getBoundingClientRect = () => ({ left: 100, width: 200, top: 0, right: 300, bottom: 4, height: 4, x: 100, y: 0, toJSON() {} });
+    const cleanup = attachSeekTooltip(bar, () => duration);
+    const tip = bar.querySelector<HTMLElement>('.pw-seek-tooltip')!;
+    const move = (clientX: number, pointerType = 'mouse') =>
+      bar.dispatchEvent(new PointerEvent('pointermove', { clientX, pointerType }));
+    return { bar, tip, move, cleanup };
+  }
+
+  it('shows the time under the pointer', () => {
+    const { tip, move } = setup(600);
+    expect(tip.hidden).toBe(true);
+    move(200); // halfway
+    expect(tip.hidden).toBe(false);
+    expect(tip.textContent).toBe('05:00');
+  });
+
+  it('clamps to the ends of the bar', () => {
+    const { tip, move } = setup(600);
+    move(50);
+    expect(tip.textContent).toBe('00:00');
+    move(999);
+    expect(tip.textContent).toBe('10:00');
+  });
+
+  it('hides on leave', () => {
+    const { bar, tip, move } = setup(600);
+    move(200);
+    bar.dispatchEvent(new PointerEvent('pointerleave'));
+    expect(tip.hidden).toBe(true);
+  });
+
+  it('stays hidden while the duration is unknown', () => {
+    const { tip, move } = setup(0);
+    move(200);
+    expect(tip.hidden).toBe(true);
+  });
+
+  it('stays hidden for touch', () => {
+    const { tip, move } = setup(600);
+    move(200, 'touch');
+    expect(tip.hidden).toBe(true);
+  });
+
+  it('removes the tooltip on cleanup', () => {
+    const { bar, cleanup } = setup(600);
+    cleanup();
+    expect(bar.querySelector('.pw-seek-tooltip')).toBeNull();
   });
 });

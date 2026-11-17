@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>podcast-widget e2e</title>
+  <link rel="stylesheet" href="/dist/podcast-player.css">
+  <style>
+    :root {
+      --player-surface: #ffffff;
+      --player-surface-variant: #f3eff4;
+      --player-on-surface: #1d1b20;
+      --player-on-surface-variant: #49454f;
+      --player-on-surface-rgb: 29, 27, 32;
+      --player-outline: #79747e;
+      --player-outline-variant: #cac4d0;
+      --md-primary: #6750a4;
+      --md-on-primary: #ffffff;
+      --md-secondary: #625b71;
+      --md-on-secondary: #ffffff;
+    }
+    body { margin: 0; font-family: sans-serif; background: #fafafa; }
+    /* A fixed-height bar along the bottom, like a site footer */
+    #mini {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 64px;
+      background: var(--player-surface-variant);
+    }
+    /* ?container=flex: a flex container with only a minimum height */
+    .flex-container #mini {
+      display: flex;
+      height: auto;
+      min-height: 64px;
+    }
+  </style>
+</head>
+<body>
+  <p style="padding: 16px">Page content above the player.</p>
+  <div id="mini"></div>
+  <div id="backdrop" class="pw-backdrop" style="display: none"></div>
+  <div id="full" class="pw-full" style="display: none"></div>
+
+  <script type="module">
+    import { AudioEngine, PlayerController, MiniPlayer, FullPlayer } from '/dist/index.js';
+
+    const params = new URLSearchParams(location.search);
+    const skip = Number(params.get('skip') || 30);
+    if (params.get('container') === 'flex') document.body.classList.add('flex-container');
+    const engine = new AudioEngine(skip);
+    // Uncached provider so each test controls exactly what the list contains
+    const provider = { getEpisodes: () => fetch('/episodes.json').then((r) => r.json()) };
+    const controller = new PlayerController(engine, provider, { storagePrefix: 'e2e', skipSeconds: skip });
+
+    const mini = new MiniPlayer({
+      container: document.getElementById('mini'),
+      controller,
+      controls: { playPause: true, skipBackward: true, progress: true, expand: true },
+    });
+    const full = new FullPlayer({
+      container: document.getElementById('full'),
+      backdrop: document.getElementById('backdrop'),
+      controller,
+      controls: {
+        playPause: true,
+        skipForward: true,
+        skipBackward: true,
+        volume: true,
+        speed: true,
+        progress: true,
+        playlist: true,
+      },
+    });
+    mini.on('expand', () => full.show());
+
+    window.player = { engine, controller, mini, full };
+    window.playerReady = controller.loadEpisodes();
+  </script>
+</body>
+</html>

@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PlayerStateStorage } from '../src/core/player-state.js';
 import { resolveConfig } from '../src/core/types.js';
+import type { Episode } from '../src/core/types.js';
+
+function ep(id: string): Episode {
+  return { id, feedId: 1, feedName: 'Show', title: `Episode ${id}`, audioUrl: `https://x/${id}.mp3`, pubDate: '' };
+}
 
 describe('PlayerStateStorage', () => {
   let stateStorage: PlayerStateStorage;
@@ -15,15 +20,29 @@ describe('PlayerStateStorage', () => {
   });
 
   it('saves and loads player state', () => {
-    stateStorage.saveState({ currentEpisodeIndex: 3, volume: 0.7 });
-    const state = stateStorage.loadState();
-    expect(state).toEqual({ currentEpisodeIndex: 3, volume: 0.7 });
+    stateStorage.saveState({ v: 2, episode: ep('a'), volume: 0.7 });
+    expect(stateStorage.loadState()).toEqual({ v: 2, episode: ep('a'), volume: 0.7 });
   });
 
   it('overwrites previous state', () => {
-    stateStorage.saveState({ currentEpisodeIndex: 1, volume: 0.5 });
-    stateStorage.saveState({ currentEpisodeIndex: 5, volume: 0.9 });
-    expect(stateStorage.loadState()?.currentEpisodeIndex).toBe(5);
+    stateStorage.saveState({ v: 2, episode: ep('a'), volume: 0.5 });
+    stateStorage.saveState({ v: 2, episode: ep('b'), volume: 0.9 });
+    expect(stateStorage.loadState()?.episode?.id).toBe('b');
+  });
+
+  it('migrates unversioned state: keeps volume, drops the index', () => {
+    localStorage.setItem('testPlayerState', JSON.stringify({ currentEpisodeIndex: 3, volume: 0.4 }));
+    expect(stateStorage.loadState()).toEqual({ v: 2, episode: null, volume: 0.4 });
+  });
+
+  it('drops a malformed episode snapshot', () => {
+    localStorage.setItem('testPlayerState', JSON.stringify({ v: 2, episode: { id: 'a' }, volume: 0.4 }));
+    expect(stateStorage.loadState()?.episode).toBeNull();
+  });
+
+  it('defaults an invalid volume to 1', () => {
+    localStorage.setItem('testPlayerState', JSON.stringify({ v: 2, episode: null, volume: 7 }));
+    expect(stateStorage.loadState()?.volume).toBe(1);
   });
 
   it('returns null for speed when nothing is saved', () => {
@@ -53,7 +72,7 @@ describe('PlayerStateStorage', () => {
   });
 
   it('uses the configured prefix', () => {
-    stateStorage.saveState({ currentEpisodeIndex: 0, volume: 1 });
+    stateStorage.saveState({ v: 2, episode: null, volume: 1 });
     expect(localStorage.getItem('testPlayerState')).not.toBeNull();
     stateStorage.saveSpeed(2);
     expect(localStorage.getItem('testPlayerSpeed')).toBe('2');

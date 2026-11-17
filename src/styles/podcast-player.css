@@ -30,6 +30,42 @@
   box-sizing: border-box;
 }
 
+/* Artwork slot — placeholder note icon, with the image layered on top.
+   A missing or broken image is hidden, revealing the placeholder. */
+.pw-art {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(var(--player-on-surface-rgb, 128, 128, 128), 0.12);
+  color: var(--player-on-surface-variant);
+}
+
+.pw-art > svg {
+  width: 45%;
+  height: 45%;
+  opacity: 0.6;
+}
+
+.pw-art > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pw-art > img[hidden] {
+  display: none;
+}
+
+/* Don't show the placeholder through transparent artwork */
+.pw-art > img:not([hidden]) + svg {
+  display: none;
+}
+
 /* ================================================================
    MINI PLAYER
    ================================================================ */
@@ -41,16 +77,17 @@
   padding: 0 12px;
   flex: 1;
   min-width: 0;
+  /* Fill the container's height so content centres vertically. min-height, not
+     height: a percentage height can't resolve in a container with only a
+     min-height, and would also stop a flex container stretching this row. */
+  min-height: 100%;
   position: relative;
 }
 
 .pw-mini-artwork {
-  width: 48px;
-  height: 48px;
-  border-radius: 4px;
-  object-fit: cover;
-  flex-shrink: 0;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
 }
 
 .pw-mini-info {
@@ -90,9 +127,26 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 2px;
   background: var(--player-outline-variant);
   cursor: pointer;
+  transition: height 120ms cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Invisible hit area so the thin line is easy to click. It extends downward
+   only: the line sits on the player's top edge, and reaching above it would
+   capture clicks on whatever is above the player. */
+.pw-mini-progress::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: -8px;
+}
+
+.pw-mini-progress:hover {
+  height: 4px;
 }
 
 .pw-mini-progress-bar {
@@ -173,14 +227,62 @@
   transform: scale(0.98);
 }
 
-/* Skip buttons */
+/* Mini play/pause — filled, but flatter than the full player's */
+.pw-mini .pw-btn--play {
+  width: 36px;
+  height: 36px;
+  box-shadow: none;
+}
+
+.pw-mini .pw-btn--play svg {
+  width: 20px;
+  height: 20px;
+}
+
+.pw-mini .pw-btn--play:hover,
+.pw-mini .pw-btn--play:active {
+  box-shadow: none;
+}
+
+/* Skip buttons — arrow icon with the seconds as text centred in the ring.
+   The ring's centre sits slightly below the icon's centre, hence padding-top. */
 .pw-btn--skip {
+  width: 48px;
+  height: 48px;
   color: var(--md-primary);
 }
 
 .pw-btn--skip svg {
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
+}
+
+.pw-skip-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 3px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.pw-btn--mini.pw-btn--skip {
+  width: 40px;
+  height: 40px;
+}
+
+.pw-btn--mini.pw-btn--skip svg {
+  width: 34px;
+  height: 34px;
+}
+
+.pw-btn--mini .pw-skip-label {
+  font-size: 10px;
 }
 
 /* Expand button */
@@ -318,7 +420,6 @@
   width: 60px;
   height: 60px;
   border-radius: 8px;
-  object-fit: cover;
   box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
   flex-shrink: 0;
 }
@@ -372,7 +473,6 @@
   border-radius: 2px;
   position: relative;
   cursor: pointer;
-  overflow: hidden;
   transition: height 100ms cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
@@ -404,6 +504,30 @@
 
 .pw-progress:hover .pw-progress-bar::after {
   opacity: 1;
+}
+
+/* Hover time tooltip — sits above the bar, clear of the cursor. The mini's bar
+   is on the player's top edge, so its container must not clip overflow. */
+.pw-seek-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  transform: translateX(-50%);
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--player-on-surface);
+  color: var(--player-surface);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.pw-seek-tooltip[hidden] {
+  display: none;
 }
 
 /* Secondary controls (volume + speed) */
@@ -578,29 +702,6 @@
   color: var(--md-on-primary);
 }
 
-.pw-playlist-item.pw-playing::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 60%;
-  background: var(--md-on-primary);
-  border-radius: 0 2px 2px 0;
-}
-
-.pw-playlist-item.pw-has-saved::after {
-  content: '';
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  width: 4px;
-  height: 4px;
-  background: var(--md-secondary);
-  border-radius: 50%;
-}
-
 .pw-playlist-item.pw-loading,
 .pw-playlist-item.pw-empty {
   justify-content: center;
@@ -613,7 +714,6 @@
   width: 48px;
   height: 48px;
   border-radius: 4px;
-  object-fit: cover;
   flex-shrink: 0;
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }

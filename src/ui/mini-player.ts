@@ -1,8 +1,8 @@
 import type { PlayerController, ControlsConfig } from './player-controller.js';
 import { EventEmitter } from '../core/event-emitter.js';
 import type { PlayerEventMap } from '../core/types.js';
-import { ICONS, SPEED_OPTIONS } from './html-templates.js';
-import { getEpisodeImage } from './utils.js';
+import { ICONS, SPEED_OPTIONS, renderArtwork, renderSkipButton } from './html-templates.js';
+import { attachSeekTooltip, getEpisodeImage, hideBrokenImages, setArtwork } from './utils.js';
 
 export interface MiniPlayerOptions {
   container: HTMLElement;
@@ -54,16 +54,16 @@ export class MiniPlayer extends EventEmitter<Pick<PlayerEventMap, 'expand'>> {
     let controlsHtml = '';
 
     if (c.skipBackward) {
-      controlsHtml += `<button class="pw-btn pw-btn--mini pw-btn--skip-back" aria-label="Back ${this.controller.config.skipSeconds} seconds">${ICONS.skipBack}</button>`;
+      controlsHtml += renderSkipButton('back', this.controller.config.skipSeconds, 'pw-btn--mini');
     }
     if (c.playPause) {
       controlsHtml += `
-        <button class="pw-btn pw-btn--mini pw-play-btn" aria-label="Play">${ICONS.play}</button>
-        <button class="pw-btn pw-btn--mini pw-pause-btn" aria-label="Pause" style="display:none">${ICONS.pause}</button>
+        <button class="pw-btn pw-btn--mini pw-btn--play pw-play-btn" aria-label="Play">${ICONS.play}</button>
+        <button class="pw-btn pw-btn--mini pw-btn--play pw-pause-btn" aria-label="Pause" style="display:none">${ICONS.pause}</button>
       `;
     }
     if (c.skipForward) {
-      controlsHtml += `<button class="pw-btn pw-btn--mini pw-btn--skip-fwd" aria-label="Forward ${this.controller.config.skipSeconds} seconds">${ICONS.skipForward}</button>`;
+      controlsHtml += renderSkipButton('fwd', this.controller.config.skipSeconds, 'pw-btn--mini');
     }
     if (c.volume) {
       controlsHtml += `
@@ -93,7 +93,7 @@ export class MiniPlayer extends EventEmitter<Pick<PlayerEventMap, 'expand'>> {
 
     this.container.innerHTML = `
       <div class="pw-mini">
-        <img class="pw-mini-artwork" src="" alt="Podcast artwork" style="display:none">
+        ${renderArtwork('pw-mini-artwork')}
         <div class="pw-mini-info">
           <div class="pw-mini-title">No episode playing</div>
           <div class="pw-mini-show"></div>
@@ -105,7 +105,7 @@ export class MiniPlayer extends EventEmitter<Pick<PlayerEventMap, 'expand'>> {
     `;
 
     // Cache references
-    this.artworkEl = this.container.querySelector('.pw-mini-artwork');
+    this.artworkEl = this.container.querySelector('.pw-mini-artwork img');
     this.titleEl = this.container.querySelector('.pw-mini-title');
     this.showEl = this.container.querySelector('.pw-mini-show');
     this.playBtn = this.container.querySelector('.pw-play-btn');
@@ -117,6 +117,8 @@ export class MiniPlayer extends EventEmitter<Pick<PlayerEventMap, 'expand'>> {
 
   private bindEvents(): void {
     const { engine } = this.controller;
+
+    this.cleanupFns.push(hideBrokenImages(this.container));
 
     // Play/pause buttons
     this.addClick('.pw-play-btn', () => this.controller.play());
@@ -147,6 +149,7 @@ export class MiniPlayer extends EventEmitter<Pick<PlayerEventMap, 'expand'>> {
       };
       this.progressContainer.addEventListener('click', handler);
       this.cleanupFns.push(() => this.progressContainer?.removeEventListener('click', handler));
+      this.cleanupFns.push(attachSeekTooltip(this.progressContainer, () => engine.duration));
     }
 
     // Engine events
@@ -197,14 +200,7 @@ export class MiniPlayer extends EventEmitter<Pick<PlayerEventMap, 'expand'>> {
     const imageUrl = getEpisodeImage(episode);
     if (this.titleEl) this.titleEl.textContent = episode.title;
     if (this.showEl) this.showEl.textContent = episode.feedName;
-    if (this.artworkEl) {
-      if (imageUrl) {
-        this.artworkEl.src = imageUrl;
-        this.artworkEl.style.display = 'block';
-      } else {
-        this.artworkEl.style.display = 'none';
-      }
-    }
+    setArtwork(this.artworkEl, imageUrl);
   }
 
   private updatePlayPauseState(playing: boolean): void {

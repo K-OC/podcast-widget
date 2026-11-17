@@ -14,9 +14,20 @@ export interface Episode {
   artwork?: string;
 }
 
-/** Persisted player state (current episode + volume). */
+/** Current version of the persisted {@link PlayerState} format. */
+export const PLAYER_STATE_VERSION = 2;
+
+/**
+ * Persisted player state (current episode + volume).
+ *
+ * The current episode is stored as a full snapshot, not a reference into the
+ * episode list: the list reorders and drops episodes as feeds publish, but the
+ * player should still restore what the listener had loaded.
+ */
 export interface PlayerState {
-  currentEpisodeIndex: number;
+  v: typeof PLAYER_STATE_VERSION;
+  /** Snapshot of the loaded episode, or null if none. */
+  episode: Episode | null;
   volume: number;
 }
 

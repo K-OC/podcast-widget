@@ -1,5 +1,5 @@
 import type { Episode, EpisodeProvider, PlayerConfig, ResolvedConfig } from '../core/types.js';
-import { resolveConfig } from '../core/types.js';
+import { resolveConfig, PLAYER_STATE_VERSION } from '../core/types.js';
 import { AudioEngine } from '../core/audio-engine.js';
 import { PlaybackStorage } from '../core/playback-storage.js';
 import { PlayerStateStorage } from '../core/player-state.js';
@@ -37,6 +37,9 @@ export class PlayerController extends EventEmitter<PlayerEventMap> {
 
   private provider: EpisodeProvider;
   private episodes: Episode[] = [];
+  /** The loaded episode. May not be in `episodes` (e.g. restored after its feed moved on). */
+  private currentEpisode: Episode | null = null;
+  /** Index of `currentEpisode` in `episodes`, or -1 if it isn't in the list. */
   private currentIndex = -1;
   private saveInterval: number | null = null;
   private cleanupFns: (() => void)[] = [];
@@ -67,8 +70,8 @@ export class PlayerController extends EventEmitter<PlayerEventMap> {
 
     // Wire engine events
     this.engine.on('ended', () => {
-      if (this.currentIndex >= 0) {
-        this.storage.removePosition(this.episodes[this.currentIndex].id);
+      if (this.currentEpisode) {
+        this.storage.removePosition(this.currentEpisode.id);
       }
       this.stopPositionSaving();
     });
@@ -87,13 +90,26 @@ export class PlayerController extends EventEmitter<PlayerEventMap> {
 
   async loadEpisodes(): Promise<Episode[]> {
     this.episodes = await this.provider.getEpisodes();
-    this.storage.cleanupPositions(this.episodes.map((ep) => ep.id));
+    const saved = this.stateStorage.loadState()?.episode ?? null;
+
+    // Keep positions for listed episodes, plus the saved one even if it has
+    // dropped out of the list, so it can still resume where it left off.
+    const keepIds = this.episodes.map((ep) => ep.id);
+    if (saved) keepIds.push(saved.id);
+    this.storage.cleanupPositions(keepIds);
+
     this.emit('episodes-loaded', { episodes: this.episodes });
 
-    // Restore saved episode (don't autoplay)
-    const savedState = this.stateStorage.loadState();
-    if (savedState && savedState.currentEpisodeIndex >= 0 && savedState.currentEpisodeIndex < this.episodes.length) {
-      this.loadEpisode(savedState.currentEpisodeIndex, false);
+    // Restore what the listener had loaded, matched by ID (the list reorders as
+    // feeds publish). Prefer the fresh copy from the list; fall back to the saved
+    // snapshot if it's no longer listed; otherwise cue the first episode.
+    // Never autoplay.
+    if (saved) {
+      const index = this.episodes.findIndex((ep) => ep.id === saved.id);
+      if (index >= 0) this.loadEpisode(index, false);
+      else this.select(saved, -1, false);
+    } else if (this.episodes.length > 0) {
+      this.loadEpisode(0, false);
     }
 
     return this.episodes;
@@ -104,28 +120,28 @@ export class PlayerController extends EventEmitter<PlayerEventMap> {
   }
 
   getCurrentEpisode(): Episode | null {
-    return this.currentIndex >= 0 ? this.episodes[this.currentIndex] : null;
+    return this.currentEpisode;
   }
 
+  /** Index of the current episode in the list, or -1 if none or not listed. */
   getCurrentIndex(): number {
     return this.currentIndex;
   }
 
   loadEpisode(index: number, autoPlay = false): void {
     if (index < 0 || index >= this.episodes.length) return;
+    this.select(this.episodes[index], index, autoPlay);
+  }
 
-    const episode = this.episodes[index];
+  private select(episode: Episode, index: number, autoPlay: boolean): void {
+    this.currentEpisode = episode;
     this.currentIndex = index;
 
     // Check for saved position
     const savedPosition = this.storage.getPosition(episode.id);
     this.engine.load(episode.audioUrl, savedPosition ?? undefined);
 
-    // Save state
-    this.stateStorage.saveState({
-      currentEpisodeIndex: this.currentIndex,
-      volume: this.engine.volume,
-    });
+    this.persistState();
 
     // Emit events
     this.emit('episode-change', { episode, index });
@@ -145,9 +161,8 @@ export class PlayerController extends EventEmitter<PlayerEventMap> {
   }
 
   async play(): Promise<void> {
-    if (this.episodes.length === 0) return;
-    if (this.currentIndex === -1) {
-      this.playEpisode(0);
+    if (!this.currentEpisode) {
+      if (this.episodes.length > 0) this.playEpisode(0);
       return;
     }
     await this.engine.play();
@@ -166,9 +181,14 @@ export class PlayerController extends EventEmitter<PlayerEventMap> {
 
   setVolume(v: number): void {
     this.engine.volume = v;
+    this.persistState();
+  }
+
+  private persistState(): void {
     this.stateStorage.saveState({
-      currentEpisodeIndex: this.currentIndex,
-      volume: v,
+      v: PLAYER_STATE_VERSION,
+      episode: this.currentEpisode,
+      volume: this.engine.volume,
     });
   }
 
@@ -199,8 +219,8 @@ export class PlayerController extends EventEmitter<PlayerEventMap> {
   }
 
   private saveCurrentPosition(): void {
-    if (this.currentIndex < 0 || !this.engine.hasSrc) return;
-    const episode = this.episodes[this.currentIndex];
+    const episode = this.currentEpisode;
+    if (!episode || !this.engine.hasSrc) return;
     if (this.engine.currentTime > 10) {
       this.storage.savePosition(episode.id, this.engine.currentTime, episode.duration);
     }

@@ -4,7 +4,7 @@ export { PlaybackStorage } from './core/playback-storage.js';
 export { PlayerStateStorage } from './core/player-state.js';
 export { FetchEpisodeProvider } from './core/episode-provider.js';
 export { EventEmitter } from './core/event-emitter.js';
-export { resolveConfig, DEFAULT_CONFIG } from './core/types.js';
+export { resolveConfig, DEFAULT_CONFIG, PLAYER_STATE_VERSION } from './core/types.js';
 
 // Types
 export type {

@@ -66,10 +66,11 @@ export class PlaybackStorage {
     }
   }
 
-  cleanupPositions(currentEpisodeIds: string[]): void {
+  /** Remove saved positions for episodes whose IDs aren't in `keepIds`. */
+  cleanupPositions(keepIds: string[]): void {
     try {
       const positions = this.getPositions();
-      const currentSet = new Set(currentEpisodeIds);
+      const currentSet = new Set(keepIds);
       let changed = false;
 
       for (const id of Object.keys(positions)) {

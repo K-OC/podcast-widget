@@ -61,7 +61,7 @@ podcast-widget/
 │   │   ├── player-state.ts       # localStorage for player state + speed preference
 │   │   └── episode-provider.ts   # FetchEpisodeProvider with caching + retry
 │   ├── ui/
-│   │   ├── utils.ts              # formatTime, escapeHtml, getEpisodeImage
+│   │   ├── utils.ts              # Formatting, artwork fallback, seek tooltip
 │   │   ├── html-templates.ts     # SVG icons, playlist rendering, speed options
 │   │   ├── player-controller.ts  # Orchestrator: engine + storage + provider → events
 │   │   ├── mini-player.ts        # Mini mode with configurable controls + inline playlist
@@ -73,6 +73,8 @@ podcast-widget/
 │   ├── styles/
 │   │   └── podcast-player.css    # Plain CSS with custom property theming (pw- prefix)
 │   └── index.ts                  # Main barrel export
+├── tests/                        # Unit tests (Vitest + jsdom)
+├── e2e/                          # Browser tests (Playwright, Chrome + WebKit)
 ├── package.json                  # Dual ESM/CJS, subpath exports
 ├── tsconfig.json                 # Client-side TS config
 ├── tsconfig.server.json          # Server-side (podcast-index) config
@@ -194,12 +196,14 @@ controller.playEpisode(2);         // Load and play
 controller.setSpeed(1.5);
 controller.setVolume(0.8);
 
-controller.on('episode-change', ({ episode, index }) => {});
+controller.on('episode-change', ({ episode, index }) => {}); // index is -1 if not in the list
 controller.on('episodes-loaded', ({ episodes }) => {});
 controller.on('episode-display', ({ imageUrl, title, show }) => {});
 
 controller.destroy();
 ```
+
+**Restoring on page load.** `loadEpisodes()` restores the episode the listener last had loaded (paused, at its saved position). The episode is saved as a snapshot and matched by `id`, so episode IDs must be stable across fetches — use the feed's `guid` where possible rather than list position or a URL that may change. If the saved episode is still in the list, the fresh copy is used; if it has dropped out (e.g. its feed published something newer), it's restored from the snapshot with `getCurrentIndex() === -1`. With nothing saved, the first episode is cued. Saved resume positions are kept for listed episodes and the current one; others are cleaned up.
 
 ### EpisodeProvider
 
@@ -304,8 +308,29 @@ const headers = createPodcastIndexHeaders(apiKey, apiSecret);
 npm run build        # Build
 npm run dev          # Build + watch
 npm run typecheck    # Type check
-npm test             # Run tests
+npm test             # Unit tests (Vitest + jsdom)
+npm run test:e2e     # Build, then browser tests in Chrome and WebKit
 ```
+
+### Browser tests
+
+`e2e/` drives the built package in real browsers through a fixture page
+(`e2e/fixture.html`). Requests are intercepted and answered from code — the page,
+`dist/`, a test-controlled episode list, generated silent audio and test images — so
+there's no server, network access or API keys, and results are repeatable.
+
+They cover restoring the listener's episode and position, skip buttons, artwork
+fallback, the seek tooltip, layout, and exact-match screenshots of the players
+(`e2e/player.spec.ts-snapshots/`). After an intended visual change, regenerate the
+screenshots and look at them before committing:
+
+```bash
+npm run test:e2e -- --update-snapshots=all
+```
+
+Requirements: Google Chrome installed (the `chrome` project uses the system
+browser), and Playwright's WebKit (`npx playwright install webkit`) with its system
+libraries (`npx playwright install-deps webkit`, needs sudo).
 
 ### Testing in a Consumer Before Publishing
 

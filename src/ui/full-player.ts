@@ -1,8 +1,8 @@
 import type { PlayerController, ControlsConfig } from './player-controller.js';
 import { EventEmitter } from '../core/event-emitter.js';
 import type { PlayerEventMap } from '../core/types.js';
-import { ICONS, SPEED_OPTIONS } from './html-templates.js';
-import { formatTime, getEpisodeImage } from './utils.js';
+import { ICONS, SPEED_OPTIONS, renderArtwork, renderSkipButton } from './html-templates.js';
+import { attachSeekTooltip, formatTime, getEpisodeImage, hideBrokenImages, setArtwork } from './utils.js';
 
 export interface FullPlayerOptions {
   container: HTMLElement;
@@ -89,7 +89,7 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
     // Build controls HTML
     let mainControlsHtml = '';
     if (c.skipBackward) {
-      mainControlsHtml += `<button class="pw-btn pw-btn--skip pw-btn--skip-back" aria-label="Back ${this.controller.config.skipSeconds} seconds">${ICONS.skipBack}</button>`;
+      mainControlsHtml += renderSkipButton('back', this.controller.config.skipSeconds);
     }
     if (c.playPause) {
       mainControlsHtml += `
@@ -98,7 +98,7 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
       `;
     }
     if (c.skipForward) {
-      mainControlsHtml += `<button class="pw-btn pw-btn--skip pw-btn--skip-fwd" aria-label="Forward ${this.controller.config.skipSeconds} seconds">${ICONS.skipForward}</button>`;
+      mainControlsHtml += renderSkipButton('fwd', this.controller.config.skipSeconds);
     }
 
     let secondaryHtml = '';
@@ -134,7 +134,7 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
         <div class="pw-hero-bg"></div>
         <button class="pw-btn-close" aria-label="Minimize player">${ICONS.close}</button>
         <div class="pw-now-playing">
-          <img class="pw-artwork" src="" alt="Podcast artwork" style="display:none">
+          ${renderArtwork('pw-artwork')}
           <div class="pw-track-info">
             <div class="pw-track-name" aria-live="polite">Select an episode to play</div>
             <div class="pw-track-time" aria-live="off">00:00 / 00:00</div>
@@ -150,7 +150,7 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
     `;
 
     // Cache references
-    this.artworkEl = this.container.querySelector('.pw-artwork');
+    this.artworkEl = this.container.querySelector('.pw-artwork img');
     this.trackNameEl = this.container.querySelector('.pw-track-name');
     this.trackTimeEl = this.container.querySelector('.pw-track-time');
     this.playBtn = this.container.querySelector('.pw-play-btn');
@@ -163,6 +163,17 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
 
   private bindEvents(): void {
     const { engine } = this.controller;
+
+    this.cleanupFns.push(hideBrokenImages(this.container));
+
+    // Blurred hero background follows the artwork, so a broken image doesn't
+    // leave the darkening overlay over nothing
+    const art = this.artworkEl;
+    if (art) {
+      const onArtLoad = () => this.setHeroBackground(art.currentSrc || art.src);
+      art.addEventListener('load', onArtLoad);
+      this.cleanupFns.push(() => art.removeEventListener('load', onArtLoad));
+    }
 
     // Close button
     this.addClick('.pw-btn-close', () => this.hide());
@@ -207,6 +218,7 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
       };
       this.progressContainer.addEventListener('click', handler);
       this.cleanupFns.push(() => this.progressContainer?.removeEventListener('click', handler));
+      this.cleanupFns.push(attachSeekTooltip(this.progressContainer, () => engine.duration));
     }
 
     // Keyboard shortcuts when player has focus
@@ -286,24 +298,15 @@ export class FullPlayer extends EventEmitter<Pick<PlayerEventMap, 'close'>> {
       this.trackNameEl.textContent = `${episode.feedName}: ${episode.title}`;
     }
 
-    if (this.artworkEl) {
-      if (imageUrl) {
-        this.artworkEl.src = imageUrl;
-        this.artworkEl.style.display = 'block';
-      } else {
-        this.artworkEl.style.display = 'none';
-      }
-    }
+    // The blurred hero background is set once the artwork loads (see bindEvents)
+    this.setHeroBackground('');
+    setArtwork(this.artworkEl, imageUrl);
+  }
 
-    if (this.heroBg) {
-      if (imageUrl) {
-        this.heroBg.style.backgroundImage = `url("${imageUrl}")`;
-        this.heroBg.classList.add('pw-active');
-      } else {
-        this.heroBg.classList.remove('pw-active');
-        this.heroBg.style.backgroundImage = '';
-      }
-    }
+  private setHeroBackground(url: string): void {
+    if (!this.heroBg) return;
+    this.heroBg.style.backgroundImage = url ? `url("${url.replace(/"/g, '%22')}")` : '';
+    this.heroBg.classList.toggle('pw-active', !!url);
   }
 
   private updatePlayPauseState(playing: boolean): void {

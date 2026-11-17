@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderPlaylistItem, renderPlaylist, ICONS, SPEED_OPTIONS } from '../src/ui/html-templates.js';
+import { renderPlaylistItem, renderPlaylist, renderArtwork, renderSkipButton, ICONS, SPEED_OPTIONS } from '../src/ui/html-templates.js';
 import type { Episode } from '../src/core/types.js';
 
 function makeEpisode(overrides: Partial<Episode> = {}): Episode {
@@ -26,6 +26,39 @@ describe('ICONS', () => {
       expect(svg).toContain('<svg');
       expect(svg).toContain('</svg>');
     }
+  });
+});
+
+describe('renderArtwork', () => {
+  it('layers the image over a placeholder, with empty alt', () => {
+    const html = renderArtwork('pw-x', 'https://example.com/a.jpg');
+    expect(html).toContain('class="pw-art pw-x"');
+    expect(html).toContain(ICONS.note);
+    expect(html).toContain('<img src="https://example.com/a.jpg" alt="">');
+  });
+
+  it('renders a hidden image when there is no URL', () => {
+    expect(renderArtwork('pw-x')).toContain('<img alt="" hidden>');
+  });
+
+  it('escapes the URL', () => {
+    expect(renderArtwork('pw-x', 'https://e.com/"><script>')).not.toContain('<script>');
+  });
+});
+
+describe('renderSkipButton', () => {
+  it('shows the configured seconds as text and in the label', () => {
+    const html = renderSkipButton('back', 15);
+    expect(html).toContain('pw-btn--skip-back');
+    expect(html).toContain('aria-label="Back 15 seconds"');
+    expect(html).toContain('<span class="pw-skip-label" aria-hidden="true">15</span>');
+  });
+
+  it('renders forward with extra classes', () => {
+    const html = renderSkipButton('fwd', 30, 'pw-btn--mini');
+    expect(html).toContain('pw-btn--skip-fwd pw-btn--mini');
+    expect(html).toContain('aria-label="Forward 30 seconds"');
+    expect(html).toContain(ICONS.skipForward);
   });
 });
 
@@ -103,6 +136,15 @@ describe('renderPlaylistItem', () => {
     });
     expect(html).toContain('pw-episode-image');
     expect(html).toContain('https://example.com/art.jpg');
+  });
+
+  it('renders a placeholder slot when there is no image', () => {
+    const html = renderPlaylistItem(makeEpisode({ image: undefined, feedImage: undefined, artwork: undefined }), 0, {
+      isPlaying: false,
+      savedPosition: null,
+    });
+    expect(html).toContain('pw-art pw-episode-image');
+    expect(html).toContain('<img alt="" hidden>');
   });
 });
 
